@@ -8,6 +8,15 @@ $TESTING = false unless defined? $TESTING
 
 ENV['AUTOTEST'] = 'true'
 
+def print_trace
+  e = begin
+    raise 'aaa'
+  rescue
+    $!.clone
+  end
+  puts e.backtrace
+end
+
 ##
 # Autotest continuously scans the files in your project for changes
 # and runs the appropriate tests.  Test failures are run until they
@@ -171,7 +180,8 @@ class Autotest
     @exception_list = []
     @test_mappings = []
 
-    self.completed_re = /\d+ tests, \d+ assertions, \d+ failures, \d+ errors/
+    #self.completed_re = /\d+ tests, \d+ assertions, \d+ failures, \d+ errors/
+    self.completed_re = /\d+ examples, \d+ failures/
     self.extra_class_map = {}
     self.extra_files = []
     self.failed_results_re = /^\s+\d+\) (?:Failure|Error):\n(.*?)\((.*?)\)/
@@ -191,6 +201,10 @@ class Autotest
     end
 
     self.add_mapping(/^test.*\/test_.*rb$/) do |filename, _|
+      filename
+    end
+
+    self.add_mapping(/^spec\/.*_spec.rb$/) do |filename, _|
       filename
     end
 
@@ -243,6 +257,7 @@ class Autotest
   def run_tests
     hook :run_command
 
+    self.files_to_test.clear
     new_mtime = self.find_files_to_test
     return unless new_mtime
     self.last_mtime = new_mtime
@@ -405,6 +420,7 @@ class Autotest
   # there are failures record this.
 
   def handle_results(results)
+    return if results == ''
     failed = results.scan(self.failed_results_re)
     completed = results =~ self.completed_re
 
